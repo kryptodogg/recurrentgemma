@@ -52,8 +52,6 @@ class RMSNorm(nn.Module):
         (self.width,),
         self.param_dtype,
     )
-
-  @at.typed
   def __call__(self, x: at.ExpandedActivations) -> at.ExpandedActivations:
     """Calls the RMSNorm."""
     x, scale = nn.dtypes.promote_dtype(x, self.scale, dtype=self.dtype)
@@ -121,8 +119,6 @@ class BlockDiagonalLinear(nn.Module):
         [self.num_blocks, output_size],
         self.param_dtype,
     )
-
-  @at.typed
   def __call__(
       self, x: jt.Float[jt.Array, "*b t e"]
   ) -> jt.Float[jt.Array, "*b t f"]:
@@ -182,7 +178,6 @@ def rnn_imag_param_init(
 
 
 @functools.partial(jax.custom_vjp, nondiff_argnums=(1,))
-@at.typed
 def sqrt_bound_derivative(
     x: complex_lib.RealOrComplex,
     max_gradient: float | jax.Array,
@@ -190,17 +185,11 @@ def sqrt_bound_derivative(
   """Computes a square root with a gradient clipped at `max_gradient`."""
   del max_gradient  # unused
   return jnp.sqrt(x)
-
-
-@at.typed
 def stable_sqrt_fwd(
     x: jax.Array,
     _: float | jax.Array,
 ) -> tuple[jax.Array, tuple[jax.Array]]:  # pylint: disable=g-one-element-tuple
   return jnp.sqrt(x), (x,)
-
-
-@at.typed
 def stable_sqrt_bwd(
     max_gradient: float | jax.Array,
     res: tuple[jax.Array],  # pylint: disable=g-one-element-tuple
@@ -240,8 +229,6 @@ class RGLRU(nn.Module):
   param_dtype: at.dtype = jnp.float32
   only_real: bool = True
   min_rad: float = 0.9
-
-  @at.typed
   def merged_to_complex(
       self,
       x: jt.Float[jt.ArrayLike, "*b"],
@@ -263,8 +250,6 @@ class RGLRU(nn.Module):
 
     assert x.shape[-1] % 2 == 0
     return self.real_imag_complex(*jnp.split(x, 2, axis=-1))
-
-  @at.typed
   def real_imag_complex(
       self,
       real: jt.Float[jt.Array, "*b"],
@@ -296,8 +281,6 @@ class RGLRU(nn.Module):
         real_dtype in (jnp.bfloat16, jnp.float16)
         or self.scan_type == common.ScanType.LINEAR_PALLAS
     )
-
-  @at.typed
   def complex_to_merged(
       self,
       x: complex_lib.RealOrComplex,
@@ -392,8 +375,6 @@ class RGLRU(nn.Module):
       return_cache: Literal[False] = False,
   ) -> tuple[at.ExpandedActivations, None]:
     ...
-
-  @at.typed
   def __call__(
       self,
       x: at.ExpandedActivations,
@@ -543,8 +524,6 @@ class Conv1D(nn.Module):
       return_cache: Literal[False] = False,
   ) -> tuple[at.ExpandedActivations, None]:
     ...
-
-  @at.typed
   def __call__(
       self,
       x: at.ExpandedActivations,
@@ -783,8 +762,6 @@ class Einsum(nn.Module):
         tuple(self.b_shape),
         self.param_dtype,
     )
-
-  @at.typed
   def __call__(self, x: jax.Array) -> jax.Array:
     """Calls the Einsum."""
     x, w, b = nn.dtypes.promote_dtype(x, self.w, self.b, dtype=self.dtype)

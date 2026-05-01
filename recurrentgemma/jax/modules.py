@@ -28,17 +28,11 @@ from recurrentgemma.jax import scan
 _MIN_LOGITS_VALUE = -2.3819763e38  # Set to a large negative number.
 _MAX_WAVELENGTH = 10_000
 _vmap_cache_roll = jax.vmap(functools.partial(jnp.roll, axis=0))
-
-
-@at.typed
 class RecurrentBlockCache(NamedTuple):
   """The cache for a recurrent block."""
 
   rg_lru_state: at.RNNState
   conv1d_state: at.Conv1DState
-
-
-@at.typed
 class AttentionBlockCache(NamedTuple):
   """The cache for an attention block."""
 
@@ -48,9 +42,6 @@ class AttentionBlockCache(NamedTuple):
 
 
 ResidualBlockCache = RecurrentBlockCache | AttentionBlockCache
-
-
-@at.typed
 def _apply_rope(
     inputs: at.Keys | at.Queries,
     positions: at.SegmentPos,
@@ -84,9 +75,6 @@ def _apply_rope(
   second_part = second_half * cos + first_half * sin
 
   return jnp.concatenate([first_part, second_part, x], axis=-1)
-
-
-@at.typed
 def _compute_causal_mask(
     q_positions: jax.Array,
     k_positions: jax.Array,
@@ -124,9 +112,6 @@ def _compute_causal_mask(
   mask = jnp.logical_and(causal_mask, window_cond)
   mask = jnp.logical_and(same_segment_mask, mask)
   return mask
-
-
-@at.typed
 def _compute_forward_pass_mask(
     segment_pos: at.SegmentPos,
     window_size: int,
@@ -147,9 +132,6 @@ def _compute_forward_pass_mask(
   return _compute_causal_mask(
       positions, positions, window_size, segment_ids, segment_ids
   )
-
-
-@at.typed
 def _compute_cache_mask(
     seq_len: int,
     cache_num_tokens: at.NumTokens,
@@ -177,9 +159,6 @@ def _compute_cache_mask(
   k_positions = mask * k_positions_now + (1 - mask) * k_position_prev
   k_positions = jnp.concatenate([k_positions, q_positions], axis=-1)
   return _compute_causal_mask(q_positions, k_positions, window_size, None, None)
-
-
-@at.typed
 def _update_attention_cache(
     keys: at.Keys,
     values: at.Values,
@@ -213,9 +192,6 @@ def _update_attention_cache(
   else:
     # Processing a prompt in chunks.
     return _attention_cache_from_prompt(keys, values, segment_pos, window_size)
-
-
-@at.typed
 def _attention_cache_from_prompt(
     keys: at.Keys,
     values: at.Values,
@@ -345,8 +321,6 @@ class LocalAttentionBlock(nn.Module):
       return_cache: Literal[False] = False,
   ) -> tuple[at.Activations, None]:
     ...
-
-  @at.typed
   def __call__(
       self,
       x: at.Activations,
@@ -553,8 +527,6 @@ class RecurrentBlock(nn.Module):
       return_cache: Literal[False] = False,
   ) -> tuple[at.Activations, None]:
     ...
-
-  @at.typed
   def __call__(
       self,
       x: at.Activations,
@@ -675,8 +647,6 @@ class MLPBlock(nn.Module):
         dtype=self.dtype,
         param_dtype=self.param_dtype,
     )
-
-  @at.typed
   def __call__(self, x: at.Activations) -> at.Activations:
     """Calls the MLP block.
 
@@ -815,8 +785,6 @@ class ResidualBlock(nn.Module):
       return_cache: Literal[False] = False,
   ) -> tuple[at.Activations, None]:
     ...
-
-  @at.typed
   def __call__(
       self,
       x: at.Activations,
@@ -919,8 +887,6 @@ class Embedder(nn.Module):
         (self.vocab_size, self.embed_dim),
         self.param_dtype,
     )
-
-  @at.typed
   def encode(self, x: at.Tokens) -> at.Activations:
     """Encodes an input sequence of tokens."""
     x = self.input_embedding_table[(x,)]
@@ -930,8 +896,6 @@ class Embedder(nn.Module):
       # Cast to bfloat16 to match training.
       x = x * jnp.sqrt(self.embed_dim).astype(jnp.bfloat16)
     return x
-
-  @at.typed
   def decode(self, x: at.Activations) -> at.TokenLogits:
     """Decodes an input sequence of activations."""
     x, embedding_table = nn.dtypes.promote_dtype(

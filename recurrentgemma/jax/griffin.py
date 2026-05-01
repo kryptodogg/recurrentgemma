@@ -125,8 +125,6 @@ class Griffin(nn.Module):
       return_cache: Literal[True] = True,
   ) -> tuple[at.TokenLogits, Cache]:
     ...
-
-  @at.typed
   def __call__(
       self,
       tokens: at.Tokens,

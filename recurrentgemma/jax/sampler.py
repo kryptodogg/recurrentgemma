@@ -29,9 +29,6 @@ import sentencepiece as spm
 
 
 Cache = TypeVar("Cache")
-
-
-@at.typed
 @struct.dataclass
 class SamplingState(Generic[Cache]):
   """Internal sampling state.
@@ -134,8 +131,6 @@ class Sampler(Generic[Cache]):
       return self._compiled_sample_fn
     else:
       return self._sample_fn
-
-  @at.typed
   def apply_model(
       self,
       params: at.Params,
@@ -153,8 +148,6 @@ class Sampler(Generic[Cache]):
         return_logits=return_logits,
         return_cache=return_cache,
     )
-
-  @at.typed
   def _sample_from_logits(
       self,
       rng: jt.PRNGKeyArray | None,
@@ -167,8 +160,6 @@ class Sampler(Generic[Cache]):
       assert rng is not None
       rng, next_rng = jax.random.split(rng)
       return jax.random.categorical(next_rng, logits), rng
-
-  @at.typed
   def _sample_step(
       self,
       params: at.Params,
@@ -227,8 +218,6 @@ class Sampler(Generic[Cache]):
         done=sampler_state.done | done_now,
         logits_buffer=logits_buffer,
     )
-
-  @at.typed
   def tokenize(self, input_string: str) -> jax.Array:
     """Tokenizes the input string."""
     if self._is_it_model:
@@ -236,8 +225,6 @@ class Sampler(Generic[Cache]):
     input_ids = self.vocab.EncodeAsIds(input_string)
     input_ids = jnp.array([self.vocab.bos_id()] + input_ids, dtype=jnp.int32)
     return input_ids
-
-  @at.typed
   def _sample_fn(
       self,
       params: at.Params,
@@ -258,8 +245,6 @@ class Sampler(Generic[Cache]):
     return jax.lax.while_loop(
         cond_fn, sample_with_params, initial_sampling_state
     )
-
-  @at.typed
   def _prompt_processing_fn(
       self,
       params: at.Params,
@@ -380,8 +365,6 @@ class Sampler(Generic[Cache]):
         done=jnp.zeros((batch_size,), dtype=jnp.bool_),
         logits_buffer=logits_buffer,
     )
-
-  @at.typed
   def _get_padded_tokens(
       self,
       tokens: Sequence[jax.Array],
