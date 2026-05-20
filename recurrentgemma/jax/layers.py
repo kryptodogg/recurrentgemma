@@ -453,6 +453,10 @@ class RGLRU(nn.Module):
     multiplier = reset[..., None] + (1 - reset)[..., None] * multiplier
     normalized_x = gated_x * multiplier.astype(x.dtype)
 
+    # Sow gates for the health monitor (extracted via mutable=["intermediates"])
+    self.sow("intermediates", "rg_lru_gate_x", gate_x)
+    self.sow("intermediates", "rg_lru_gate_a", gate_a)
+
     y, last_h = scan.linear_scan(
         x=normalized_x,
         a=a * (1 - reset[..., None]),
