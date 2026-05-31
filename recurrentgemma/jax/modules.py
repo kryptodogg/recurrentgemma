@@ -341,7 +341,6 @@ class LocalAttentionBlock(nn.Module):
       than the returned updated cache is empty initialized and filled in from
       the input sequence.
     """
-    print(f"[DEBUG] LocalAttentionBlock x.shape: {x.shape}")
     b, t, _ = x.shape
     assert segment_pos.shape == (b, t), segment_pos.shape
 

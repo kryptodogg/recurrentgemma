@@ -138,6 +138,9 @@ class GriffinConfig(NamedTuple):
     lru_width: The width of the RG-LRU if different from `width`.
     scan_type: If running Flax, this specifies which implementation to use for
       the scan in the RG-LRU.
+    wave_transform_enabled: Synesthesia fork extension. Enables Aura's
+      handbook-guided wave-to-wave transform selector when this config is used
+      as the learning backbone.
   """
 
   vocab_size: int
@@ -150,6 +153,9 @@ class GriffinConfig(NamedTuple):
   logits_soft_cap: float
   lru_width: int | None = None
   scan_type: ScanType = ScanType.AUTO
+    wave_transform_enabled: bool = True
+    wave_transform_enabled: bool = True
+  wave_transform_enabled: bool = True
 
   @property
   def max_cache_length(self) -> int:
@@ -159,6 +165,11 @@ class GriffinConfig(NamedTuple):
   @property
   def num_layers(self) -> int:
     """The number of layers of the model."""
+    return len(self.block_types)
+
+  @property
+  def num_blocks(self) -> int:
+    """Alias retained for Synesthesia model code and tests."""
     return len(self.block_types)
 
   @classmethod
