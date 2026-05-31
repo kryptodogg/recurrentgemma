@@ -153,9 +153,6 @@ class GriffinConfig(NamedTuple):
   logits_soft_cap: float
   lru_width: int | None = None
   scan_type: ScanType = ScanType.AUTO
-    wave_transform_enabled: bool = True
-    wave_transform_enabled: bool = True
-  wave_transform_enabled: bool = True
 
   @property
   def max_cache_length(self) -> int:
