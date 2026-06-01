@@ -15,6 +15,7 @@
 """Utility functions for loading + saving parameters from a checkpoint."""
 
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 import jax
 from jax.experimental import mesh_utils
@@ -48,7 +49,26 @@ def load_parameters(
   """
 
   checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+  checkpoint_dir = Path(checkpoint_path)
+  if (
+      checkpoint_dir.joinpath("_METADATA").exists()
+      and not checkpoint_dir.joinpath("_CHECKPOINT_METADATA").exists()
+  ):
+    restored = checkpointer.restore(checkpoint_path)
+    if isinstance(restored, Mapping) and set(restored.keys()) == {"params"}:
+      return restored["params"]
+    return restored
+
   structure = checkpointer.metadata(checkpoint_path)
+  if not isinstance(structure, Mapping):
+    # Our local 2b-it artifact is an OCDBT PyTree checkpoint with `_METADATA`
+    # instead of Orbax's newer `_CHECKPOINT_METADATA`.  In that layout Orbax
+    # can restore the tree directly, but metadata() does not expose the pytree
+    # structure needed to synthesize ArrayRestoreArgs.
+    restored = checkpointer.restore(checkpoint_path)
+    if isinstance(restored, Mapping) and set(restored.keys()) == {"params"}:
+      return restored["params"]
+    return restored
 
   if isinstance(sharding, str):
     if sharding == "single_device":
