@@ -1,3 +1,5 @@
 __pycache__/
 *.pyc
 flax/
+!recurrentgemma/jax/
+!recurrentgemma/jax/**
