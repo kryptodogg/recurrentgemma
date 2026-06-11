@@ -1,3 +1,17 @@
+[project]
+name = "recurrentgemma"
+version = "1.0.1"
+description = "Open weights large language model (LLM) from Google DeepMind."
+requires-python = ">=3.11"
+dependencies = [
+    "absl-py>=1",
+    "sentencepiece>=0.2.0",
+    "numpy>=1.26.0,<2.4.0",
+    "einops>=0",
+    "jaxtyping>=0",
+    "typeguard>=2,<3",
+]
+
 [tool.poetry]
 name = "recurrentgemma"
 version = "1.0.1"
