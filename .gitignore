@@ -1,8 +1,8 @@
 *__pycache__/
 *.pyc
 flax/
-!recurrentgemma/jax/
-!recurrentgemma/jax/**
+!models/recurrentgemma/jax/
+!models/recurrentgemma/jax/**
 models/recurrentgemma/recurrentgemma/jax/__pycache__/
 models/recurrentgemma/recurrentgemma/jax/*.pyc
 recurrentgemma/jax/__pycache__/__init__.cpython-312.pyc
