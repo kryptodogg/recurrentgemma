@@ -24,74 +24,78 @@ from recurrentgemma.jax import array_typing as at
 
 
 def save_parameters(checkpoint_path: str, params: at.Params):
-  ckpt = {"params": params}
-  orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
-  orbax_checkpointer.save(checkpoint_path, ckpt,)
+    ckpt = {"params": params}
+    orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+    orbax_checkpointer.save(
+        checkpoint_path,
+        ckpt,
+    )
 
 
 def load_parameters(
     checkpoint_path: str,
     sharding: str | Mapping[str, Any],
 ) -> at.Params:
-  """A helper function for loading parameters from a checkpoint.
+    """A helper function for loading parameters from a checkpoint.
 
-  Args:
-    checkpoint_path: The path to the orbax checkpoint to load.
-    sharding: One of three options:
-      1. "single_device" - Loads all parameters on a single device, determined
-        by `jax.local_devices()[0]`.
-      2. "replicated" - Loads all parameters replicated on all devices.
-      3. A user specified PyTree of `jax.sharding.Sharding`, which specifies
-        the sharding of each individual parameter.
+    Args:
+      checkpoint_path: The path to the orbax checkpoint to load.
+      sharding: One of three options:
+        1. "single_device" - Loads all parameters on a single device, determined
+          by `jax.local_devices()[0]`.
+        2. "replicated" - Loads all parameters replicated on all devices.
+        3. A user specified PyTree of `jax.sharding.Sharding`, which specifies
+          the sharding of each individual parameter.
 
-  Returns:
-    The loaded parameters, sharded as specified by `sharding`.
-  """
+    Returns:
+      The loaded parameters, sharded as specified by `sharding`.
+    """
 
-  checkpointer = orbax.checkpoint.PyTreeCheckpointer()
-  checkpoint_dir = Path(checkpoint_path)
-  if (
-      checkpoint_dir.joinpath("_METADATA").exists()
-      and not checkpoint_dir.joinpath("_CHECKPOINT_METADATA").exists()
-  ):
-    restored = checkpointer.restore(checkpoint_path)
-    if isinstance(restored, Mapping) and set(restored.keys()) == {"params"}:
-      return restored["params"]
-    return restored
+    checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+    checkpoint_dir = Path(checkpoint_path)
+    if (
+        checkpoint_dir.joinpath("_METADATA").exists()
+        and not checkpoint_dir.joinpath("_CHECKPOINT_METADATA").exists()
+    ):
+        restored = checkpointer.restore(checkpoint_path)
+        if isinstance(restored, Mapping) and set(restored.keys()) == {"params"}:
+            return restored["params"]
+        return restored
 
-  structure = checkpointer.metadata(checkpoint_path)
-  if not isinstance(structure, Mapping):
-    # Our local 2b-it artifact is an OCDBT PyTree checkpoint with `_METADATA`
-    # instead of Orbax's newer `_CHECKPOINT_METADATA`.  In that layout Orbax
-    # can restore the tree directly, but metadata() does not expose the pytree
-    # structure needed to synthesize ArrayRestoreArgs.
-    restored = checkpointer.restore(checkpoint_path)
-    if isinstance(restored, Mapping) and set(restored.keys()) == {"params"}:
-      return restored["params"]
-    return restored
+    structure = checkpointer.metadata(checkpoint_path)
+    if not isinstance(structure, Mapping):
+        # Our local 2b-it artifact is an OCDBT PyTree checkpoint with `_METADATA`
+        # instead of Orbax's newer `_CHECKPOINT_METADATA`.  In that layout Orbax
+        # can restore the tree directly, but metadata() does not expose the pytree
+        # structure needed to synthesize ArrayRestoreArgs.
+        restored = checkpointer.restore(checkpoint_path)
+        if isinstance(restored, Mapping) and set(restored.keys()) == {"params"}:
+            return restored["params"]
+        return restored
 
-  if isinstance(sharding, str):
-    if sharding == "single_device":
-      sharding = jax.sharding.SingleDeviceSharding(jax.local_devices()[0])
-    elif sharding == "replicated":
-      devices = mesh_utils.create_device_mesh((jax.local_device_count(),))
-      sharding = jax.sharding.NamedSharding(
-          jax.sharding.Mesh(devices, "x"), jax.sharding.PartitionSpec()
-      )
+    if isinstance(sharding, str):
+        if sharding == "single_device":
+            sharding = jax.sharding.SingleDeviceSharding(jax.local_devices()[0])
+        elif sharding == "replicated":
+            devices = mesh_utils.create_device_mesh((jax.local_device_count(),))
+            sharding = jax.sharding.NamedSharding(
+                jax.sharding.Mesh(devices, "x"), jax.sharding.PartitionSpec()
+            )
 
-    # Make a sharding tree for all parameters
-    sharding_tree = jax.tree_util.tree_map(lambda x: sharding, structure)
+        # Make a sharding tree for all parameters
+        sharding_tree = jax.tree_util.tree_map(lambda x: sharding, structure)
 
-  else:
-    sharding_tree = sharding
+    else:
+        sharding_tree = sharding
 
-  restore_args = jax.tree_util.tree_map(
-      lambda x, s: orbax.checkpoint.ArrayRestoreArgs(
-          restore_type=jax.Array,
-          sharding=s,
-      ),
-      structure, sharding_tree,
-  )
+    restore_args = jax.tree_util.tree_map(
+        lambda x, s: orbax.checkpoint.ArrayRestoreArgs(
+            restore_type=jax.Array,
+            sharding=s,
+        ),
+        structure,
+        sharding_tree,
+    )
 
-  # Load
-  return checkpointer.restore(checkpoint_path, restore_args=restore_args)
+    # Load
+    return checkpointer.restore(checkpoint_path, restore_args=restore_args)

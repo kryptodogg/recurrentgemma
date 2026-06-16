@@ -24,9 +24,10 @@ F = TypeVar("F", bound=Callable)
 
 
 def typed(function: F) -> F:
-  # We comment out this, since it breaks torch.compile
-  # return jt.jaxtyped(function, typechecker=typeguard.typechecked)
-  return function
+    # We comment out this, since it breaks torch.compile
+    # return jt.jaxtyped(function, typechecker=typeguard.typechecked)
+    return function
+
 
 # Notation:
 # b = batch size

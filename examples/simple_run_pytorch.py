@@ -31,79 +31,79 @@ _KEY = flags.DEFINE_integer("key", 1241312, "Key to use for randomization.")
 
 
 def main(argv: Sequence[str]) -> None:
-  if len(argv) > 1:
-    raise app.UsageError("Too many command-line arguments.")
+    if len(argv) > 1:
+        raise app.UsageError("Too many command-line arguments.")
 
-  if _DEBUG_MODE.value:
-    logging.info("Running debug mode.")
-    config = recurrentgemma.GriffinConfig(
-        vocab_size=100,
-        width=128,
-        mlp_expanded_width=3 * 128,
-        lru_width=256,
-        num_heads=2,
-        block_types=(
-            recurrentgemma.TemporalBlockType.RECURRENT,
-            recurrentgemma.TemporalBlockType.ATTENTION,
-        ),
-        embeddings_scale_by_sqrt_dim=True,
-        attention_window_size=2048,
-        logits_soft_cap=30.0,
+    if _DEBUG_MODE.value:
+        logging.info("Running debug mode.")
+        config = recurrentgemma.GriffinConfig(
+            vocab_size=100,
+            width=128,
+            mlp_expanded_width=3 * 128,
+            lru_width=256,
+            num_heads=2,
+            block_types=(
+                recurrentgemma.TemporalBlockType.RECURRENT,
+                recurrentgemma.TemporalBlockType.ATTENTION,
+            ),
+            embeddings_scale_by_sqrt_dim=True,
+            attention_window_size=2048,
+            logits_soft_cap=30.0,
+        )
+    else:
+        logging.info("Running RecurrentGemma 2B.")
+        config = recurrentgemma.GriffinConfig.from_preset(
+            vocab_size=256_000,
+            preset=recurrentgemma.Preset.RECURRENT_GEMMA_2B_V1,
+        )
+
+    model = recurrentgemma.Griffin(config)
+
+    batch_size = 4
+    sequence_length = 8 * 1024
+    tokens = torch.randint(
+        size=[batch_size, sequence_length],
+        low=0,
+        high=config.vocab_size,
     )
-  else:
-    logging.info("Running RecurrentGemma 2B.")
-    config = recurrentgemma.GriffinConfig.from_preset(
-        vocab_size=256_000,
-        preset=recurrentgemma.Preset.RECURRENT_GEMMA_2B_V1,
-    )
+    pos = torch.arange(sequence_length)
+    pos = torch.repeat_interleave(pos[None], batch_size, dim=0)
 
-  model = recurrentgemma.Griffin(config)
+    # Forward pass/prompt processing
+    logging.info("Initialise model and prefill.")
+    logits, cache = model.forward(tokens, segment_pos=pos)
+    prefill_logits = logits
 
-  batch_size = 4
-  sequence_length = 8 * 1024
-  tokens = torch.randint(
-      size=[batch_size, sequence_length],
-      low=0,
-      high=config.vocab_size,
-  )
-  pos = torch.arange(sequence_length)
-  pos = torch.repeat_interleave(pos[None], batch_size, dim=0)
+    pos = pos[:, -1:] + 1
+    # Sampling tokens one by one
+    logging.info("Decoding.")
+    sampled_tokens = []
+    for i in range(128):
+        probs = torch.nn.functional.softmax(logits[:, -1], dim=-1)
+        next_token = torch.multinomial(probs, 1)
+        sampled_tokens.append(next_token)
+        logits, cache = model(
+            tokens=next_token,
+            segment_pos=pos + i,
+            cache=cache,
+        )
 
-  # Forward pass/prompt processing
-  logging.info("Initialise model and prefill.")
-  logits, cache = model.forward(tokens, segment_pos=pos)
-  prefill_logits = logits
+    sampled_tokens = torch.stack(sampled_tokens, axis=1)
+    logging.info("Sampled tokens.")
+    logging.debug(sampled_tokens)
 
-  pos = pos[:, -1:] + 1
-  # Sampling tokens one by one
-  logging.info("Decoding.")
-  sampled_tokens = []
-  for i in range(128):
-    probs = torch.nn.functional.softmax(logits[:, -1], dim=-1)
-    next_token = torch.multinomial(probs, 1)
-    sampled_tokens.append(next_token)
-    logits, cache = model(
-        tokens=next_token,
-        segment_pos=pos + i,
-        cache=cache,
-    )
-
-  sampled_tokens = torch.stack(sampled_tokens, axis=1)
-  logging.info("Sampled tokens.")
-  logging.debug(sampled_tokens)
-
-  if _SAVE_TENSORS.value:
-    # Bundle everything together.
-    ckpt = {
-        "model": model.state_dict(),
-        "config": config,
-        "inputs_tokens": tokens,
-        "inputs_pos": pos,
-        "sampled_tokens": sampled_tokens,
-        "prefill_logits": prefill_logits,
-    }
-    torch.save(ckpt, _SAVE_TENSORS.value)
+    if _SAVE_TENSORS.value:
+        # Bundle everything together.
+        ckpt = {
+            "model": model.state_dict(),
+            "config": config,
+            "inputs_tokens": tokens,
+            "inputs_pos": pos,
+            "sampled_tokens": sampled_tokens,
+            "prefill_logits": prefill_logits,
+        }
+        torch.save(ckpt, _SAVE_TENSORS.value)
 
 
 if __name__ == "__main__":
-  app.run(main)
+    app.run(main)

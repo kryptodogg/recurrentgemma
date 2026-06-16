@@ -30,6 +30,7 @@ python sampling_pytorch.py --path_checkpoint=${PATH_TO_THE_GEMMA_CHECKPOINT} \
     --path_tokenizer=${PATH_TO_THE_GEMMA_TOKENIZER} \
     --string_to_sample="Where is Paris?"
 """
+
 from typing import Sequence
 
 from absl import app
@@ -64,43 +65,43 @@ def _load_and_sample(
     input_string: str,
     total_generation_steps: int,
 ) -> None:
-  """Loads and samples a string from a checkpoint."""
-  device = "cuda" if torch.cuda.is_available() else "cpu"
-  print(f"Loading the parameters from {path_checkpoint}")
-  params = torch.load(path_checkpoint)
-  params = {k: v.to(device=device) for k, v in params.items()}
-  print("Parameters loaded.")
-  # Create a sampler with the right param shapes.
-  vocab = spm.SentencePieceProcessor()
-  vocab.Load(path_tokenizer)
-  config = recurrentgemma.GriffinConfig.from_torch_params(
-      params,
-      preset=recurrentgemma.Preset.RECURRENT_GEMMA_2B_V1,
-  )
-  model = recurrentgemma.Griffin(config, device=device, dtype=torch.bfloat16)
-  model.load_state_dict(params)
-  sampler = recurrentgemma.Sampler(model=model, vocab=vocab)
-  sampler_output = sampler(
-      input_strings=[input_string],
-      total_generation_steps=total_generation_steps,
-  )
+    """Loads and samples a string from a checkpoint."""
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Loading the parameters from {path_checkpoint}")
+    params = torch.load(path_checkpoint)
+    params = {k: v.to(device=device) for k, v in params.items()}
+    print("Parameters loaded.")
+    # Create a sampler with the right param shapes.
+    vocab = spm.SentencePieceProcessor()
+    vocab.Load(path_tokenizer)
+    config = recurrentgemma.GriffinConfig.from_torch_params(
+        params,
+        preset=recurrentgemma.Preset.RECURRENT_GEMMA_2B_V1,
+    )
+    model = recurrentgemma.Griffin(config, device=device, dtype=torch.bfloat16)
+    model.load_state_dict(params)
+    sampler = recurrentgemma.Sampler(model=model, vocab=vocab)
+    sampler_output = sampler(
+        input_strings=[input_string],
+        total_generation_steps=total_generation_steps,
+    )
 
-  print(f"Input string: {input_string}")
-  print(f"Sampled string: {sampler_output.text}")
+    print(f"Input string: {input_string}")
+    print(f"Sampled string: {sampler_output.text}")
 
 
 def main(argv: Sequence[str]) -> None:
 
-  if len(argv) > 1:
-    raise app.UsageError("Too many command-line arguments.")
+    if len(argv) > 1:
+        raise app.UsageError("Too many command-line arguments.")
 
-  _load_and_sample(
-      path_checkpoint=_PATH_CHECKPOINT.value,
-      path_tokenizer=_PATH_TOKENIZER.value,
-      input_string=_STRING_TO_SAMPLE.value,
-      total_generation_steps=_TOTAL_GENERATION_STEPS.value,
-  )
+    _load_and_sample(
+        path_checkpoint=_PATH_CHECKPOINT.value,
+        path_tokenizer=_PATH_TOKENIZER.value,
+        input_string=_STRING_TO_SAMPLE.value,
+        total_generation_steps=_TOTAL_GENERATION_STEPS.value,
+    )
 
 
 if __name__ == "__main__":
-  app.run(main)
+    app.run(main)

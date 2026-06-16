@@ -66,6 +66,6 @@ __all__ = (
 
 # Prevents from accessing anything except the exported symbols
 try:
-  del jax, common  # pylint: disable=undefined-variable
+    del jax, common  # pylint: disable=undefined-variable
 except NameError:
-  pass
+    pass

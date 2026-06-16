@@ -30,6 +30,7 @@ python sampling_jax.py --path_checkpoint=${PATH_TO_THE_GEMMA_CHECKPOINT} \
     --path_tokenizer=${PATH_TO_THE_GEMMA_TOKENIZER} \
     --string_to_sample="Where is Paris?"
 """
+
 from typing import Sequence
 
 from absl import app
@@ -63,40 +64,40 @@ def _load_and_sample(
     input_string: str,
     total_generation_steps: int,
 ) -> None:
-  """Loads and samples a string from a checkpoint."""
-  print(f"Loading the parameters from {path_checkpoint}")
-  params = recurrentgemma.load_parameters(path_checkpoint, "single_device")
-  print("Parameters loaded.")
-  # Create a sampler with the right param shapes.
-  vocab = spm.SentencePieceProcessor()
-  vocab.Load(path_tokenizer)
-  config = recurrentgemma.GriffinConfig.from_flax_params_or_variables(
-      params,
-      preset=recurrentgemma.Preset.RECURRENT_GEMMA_2B_V1,
-  )
-  model = recurrentgemma.Griffin(config)
-  sampler = recurrentgemma.Sampler(model=model, vocab=vocab, params=params)
-  sampled_output = sampler(
-      input_strings=[input_string],
-      total_generation_steps=total_generation_steps,
-  )
+    """Loads and samples a string from a checkpoint."""
+    print(f"Loading the parameters from {path_checkpoint}")
+    params = recurrentgemma.load_parameters(path_checkpoint, "single_device")
+    print("Parameters loaded.")
+    # Create a sampler with the right param shapes.
+    vocab = spm.SentencePieceProcessor()
+    vocab.Load(path_tokenizer)
+    config = recurrentgemma.GriffinConfig.from_flax_params_or_variables(
+        params,
+        preset=recurrentgemma.Preset.RECURRENT_GEMMA_2B_V1,
+    )
+    model = recurrentgemma.Griffin(config)
+    sampler = recurrentgemma.Sampler(model=model, vocab=vocab, params=params)
+    sampled_output = sampler(
+        input_strings=[input_string],
+        total_generation_steps=total_generation_steps,
+    )
 
-  print(f"Input string: {input_string}")
-  print(f"Sampled string: {sampled_output.text}")
+    print(f"Input string: {input_string}")
+    print(f"Sampled string: {sampled_output.text}")
 
 
 def main(argv: Sequence[str]) -> None:
 
-  if len(argv) > 1:
-    raise app.UsageError("Too many command-line arguments.")
+    if len(argv) > 1:
+        raise app.UsageError("Too many command-line arguments.")
 
-  _load_and_sample(
-      path_checkpoint=_PATH_CHECKPOINT.value,
-      path_tokenizer=_PATH_TOKENIZER.value,
-      input_string=_STRING_TO_SAMPLE.value,
-      total_generation_steps=_TOTAL_GENERATION_STEPS.value,
-  )
+    _load_and_sample(
+        path_checkpoint=_PATH_CHECKPOINT.value,
+        path_tokenizer=_PATH_TOKENIZER.value,
+        input_string=_STRING_TO_SAMPLE.value,
+        total_generation_steps=_TOTAL_GENERATION_STEPS.value,
+    )
 
 
 if __name__ == "__main__":
-  app.run(main)
+    app.run(main)

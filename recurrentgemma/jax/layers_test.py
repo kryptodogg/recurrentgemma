@@ -24,129 +24,129 @@ from recurrentgemma.jax import layers
 
 
 class LayersTest(parameterized.TestCase):
-
-  @parameterized.parameters(
-      dict(
-          inputs_shape=(1, 4),
-          w_shape=(3, 2, 4, 3),
-          b_shape=(3, 1, 1, 3),
-          eqn='TD,SNDH->STNH',
-          expected_shape=(3, 1, 2, 3),
-      ),
-      dict(
-          inputs_shape=(1, 2, 4),
-          w_shape=(2, 4, 8),
-          b_shape=(1, 8),
-          eqn='ANH,NHD->AD',
-          expected_shape=(1, 8),
-      ),
-  )
-  def test_einsum(
-      self,
-      inputs_shape: tuple[int, int],
-      w_shape: tuple[int, int, int],
-      b_shape: tuple[int, int],
-      eqn: str,
-      expected_shape: tuple[int, int],
-  ):
-    # Given
-    einsum = layers.Einsum(
-        w_shape=w_shape,
-        b_shape=b_shape,
-        eqn=eqn,
+    @parameterized.parameters(
+        dict(
+            inputs_shape=(1, 4),
+            w_shape=(3, 2, 4, 3),
+            b_shape=(3, 1, 1, 3),
+            eqn="TD,SNDH->STNH",
+            expected_shape=(3, 1, 2, 3),
+        ),
+        dict(
+            inputs_shape=(1, 2, 4),
+            w_shape=(2, 4, 8),
+            b_shape=(1, 8),
+            eqn="ANH,NHD->AD",
+            expected_shape=(1, 8),
+        ),
     )
+    def test_einsum(
+        self,
+        inputs_shape: tuple[int, int],
+        w_shape: tuple[int, int, int],
+        b_shape: tuple[int, int],
+        eqn: str,
+        expected_shape: tuple[int, int],
+    ):
+        # Given
+        einsum = layers.Einsum(
+            w_shape=w_shape,
+            b_shape=b_shape,
+            eqn=eqn,
+        )
 
-    # When
-    output = einsum.apply(
-        {'params': {'w': jnp.ones(w_shape), 'b': jnp.ones(b_shape)}},
-        jnp.ones(inputs_shape),
+        # When
+        output = einsum.apply(
+            {"params": {"w": jnp.ones(w_shape), "b": jnp.ones(b_shape)}},
+            jnp.ones(inputs_shape),
+        )
+
+        # Then
+        self.assertEqual(output.shape, expected_shape)
+
+    @parameterized.parameters(dict(x=[0.1, 0.2], expected=[0.6324429, 1.2648858]))
+    def test_rmsnorm(self, x: float, expected: float):
+        x = jnp.array([x])
+        rmsnorm = layers.RMSNorm(width=2)
+        params = rmsnorm.init(jax.random.PRNGKey(0), x)
+        output = rmsnorm.apply(params, x)
+        np.testing.assert_array_equal(output, jnp.array([expected]))
+
+    @parameterized.product(
+        seq_len=[1, 4, 8],
+        dtype=["bfloat16", "float32"],
+        scan_type=[
+            common.ScanType.LINEAR_NATIVE,
+            common.ScanType.ASSOCIATIVE_NATIVE,
+        ],
     )
+    def test_scan(
+        self,
+        seq_len: int,
+        dtype: str,
+        scan_type: common.ScanType,
+    ):
+        # Given
+        key = jax.random.PRNGKey(0)
+        x_key, a_key, h_key = jax.random.split(key, 3)
+        b, d = 2, 8
 
-    # Then
-    self.assertEqual(output.shape, expected_shape)
+        x = jax.random.normal(x_key, shape=(b, seq_len, d), dtype=dtype)
+        a = jax.random.normal(a_key, shape=(b, seq_len, d), dtype=dtype)
+        h0 = jax.random.normal(h_key, shape=(b, d), dtype=jnp.float32)
 
-  @parameterized.parameters(dict(x=[0.1, 0.2], expected=[0.6324429, 1.2648858]))
-  def test_rmsnorm(self, x: float, expected: float):
-    x = jnp.array([x])
-    rmsnorm = layers.RMSNorm(width=2)
-    params = rmsnorm.init(jax.random.PRNGKey(0), x)
-    output = rmsnorm.apply(params, x)
-    np.testing.assert_array_equal(output, jnp.array([expected]))
+        reset = jnp.zeros((b, seq_len), dtype=jnp.bool_)
 
-  @parameterized.product(
-      seq_len=[1, 4, 8],
-      dtype=['bfloat16', 'float32'],
-      scan_type=[
-          common.ScanType.LINEAR_NATIVE,
-          common.ScanType.ASSOCIATIVE_NATIVE,
-      ],
-  )
-  def test_scan(
-      self,
-      seq_len: int,
-      dtype: str,
-      scan_type: common.ScanType,
-  ):
-    # Given
-    key = jax.random.PRNGKey(0)
-    x_key, a_key, h_key = jax.random.split(key, 3)
-    b, d = 2, 8
+        # When
+        y, h_next = layers.scan.linear_scan(
+            x=x,
+            a=a * (1 - reset[..., None]),
+            h0=h0,
+            scan_type=scan_type,
+        )
 
-    x = jax.random.normal(x_key, shape=(b, seq_len, d), dtype=dtype)
-    a = jax.random.normal(a_key, shape=(b, seq_len, d), dtype=dtype)
-    h0 = jax.random.normal(h_key, shape=(b, d), dtype=jnp.float32)
+        # Then
+        self.assertEqual(y.shape, x.shape)
+        self.assertEqual(y.dtype, x.dtype)
 
-    reset = jnp.zeros((b, seq_len), dtype=jnp.bool_)
+        self.assertEqual(h_next.shape, h0.shape)
+        self.assertEqual(h_next.dtype, h0.dtype)
 
-    # When
-    y, h_next = layers.scan.linear_scan(
-        x=x,
-        a=a * (1 - reset[..., None]),
-        h0=h0,
-        scan_type=scan_type,
+    @parameterized.product(
+        only_real=[True, False],
     )
+    def test_rglu(self, only_real: bool):
+        # Given
+        key = jax.random.PRNGKey(0)
+        rglu_key, x_key = jax.random.split(key, 2)
+        b, d = 2, 8
+        dtype = jnp.bfloat16
+        rglu = layers.RGLRU(
+            width=d,
+            num_heads=1,
+            only_real=only_real,
+            dtype=dtype,
+        )
+        seq_len = 4
 
-    # Then
-    self.assertEqual(y.shape, x.shape)
-    self.assertEqual(y.dtype, x.dtype)
+        x = jax.random.normal(x_key, shape=(b, seq_len, d), dtype=dtype)
+        segment_pos = jnp.ones((b, seq_len), dtype=jnp.int32)
 
-    self.assertEqual(h_next.shape, h0.shape)
-    self.assertEqual(h_next.dtype, h0.dtype)
+        # When
+        (y, h0), _ = rglu.init_with_output(
+            rglu_key,
+            x=x,
+            segment_pos=segment_pos,
+            return_cache=True,
+        )
 
-  @parameterized.product(
-      only_real=[True, False],
-  )
-  def test_rglu(self, only_real: bool):
-    # Given
-    key = jax.random.PRNGKey(0)
-    rglu_key, x_key = jax.random.split(key, 2)
-    b, d = 2, 8
-    dtype = jnp.bfloat16
-    rglu = layers.RGLRU(
-        width=d,
-        num_heads=1,
-        only_real=only_real,
-        dtype=dtype,
-    )
-    seq_len = 4
+        # Then
+        self.assertEqual(y.shape, x.shape)
+        self.assertEqual(y.dtype, x.dtype)
 
-    x = jax.random.normal(x_key, shape=(b, seq_len, d), dtype=dtype)
-    segment_pos = jnp.ones((b, seq_len), dtype=jnp.int32)
+        self.assertEqual(h0.shape, (b, d))
+        self.assertEqual(h0.dtype, jnp.float32)
 
-    # When
-    (y, h0), _ = rglu.init_with_output(
-        rglu_key,
-        x=x,
-        segment_pos=segment_pos,
-        return_cache=True,
-    )
 
-    # Then
-    self.assertEqual(y.shape, x.shape)
-    self.assertEqual(y.dtype, x.dtype)
-
-    self.assertEqual(h0.shape, (b, d))
-    self.assertEqual(h0.dtype, jnp.float32)
-
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()
