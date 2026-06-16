@@ -45,13 +45,13 @@ class SamplingState(Generic[Cache]):
       logits_buffer: Fixed-size buffer for accumulating the output logits.
     """
 
-    tokens_buffer: jt.Integer[torch.Tensor, "*b l"]
-    step: jt.Integer[torch.Tensor, ""]
-    total_steps: jt.Integer[torch.Tensor, ""]
-    positions: jt.Integer[torch.Tensor, "*b 1"]
+    tokens_buffer: jt.Integer[torch.Tensor, "*b l"]  # noqa: F722
+    step: jt.Integer[torch.Tensor, ""]  # noqa: F722
+    total_steps: jt.Integer[torch.Tensor, ""]  # noqa: F722
+    positions: jt.Integer[torch.Tensor, "*b 1"]  # noqa: F722
     cache: Cache
-    done: jt.Bool[torch.Tensor, "*b"]
-    logits_buffer: jt.Float[torch.Tensor, "*b l v"] | None = None
+    done: jt.Bool[torch.Tensor, "*b"]  # noqa: F722
+    logits_buffer: jt.Float[torch.Tensor, "*b l v"] | None = None  # noqa: F722
 
 
 class SamplerOutput(NamedTuple):
@@ -125,8 +125,8 @@ class Sampler:
     @at.typed
     def _sample_from_logits(
         self,
-        logits: jt.Float[torch.Tensor, "*b v"],
-    ) -> jt.Integer[torch.Tensor, "*b"]:
+        logits: jt.Float[torch.Tensor, "*b v"],  # noqa: F722
+    ) -> jt.Integer[torch.Tensor, "*b"]:  # noqa: F722
         """Samples from the logits categorical distribution."""
         if self.greedy_sampling:
             return torch.argmax(logits, dim=-1)
@@ -414,13 +414,14 @@ class Sampler:
 
         # Text decoding.
         tokens = [
-            tokens[l:] for tokens, l in zip(sampling_state.tokens_buffer, pad_lengths)
+            tokens[l:]
+            for tokens, l in zip(sampling_state.tokens_buffer, pad_lengths)  # noqa: E741
         ]
 
         if return_logits:
             logits = [
                 logits[l:]
-                for logits, l in zip(sampling_state.logits_buffer, pad_lengths)
+                for logits, l in zip(sampling_state.logits_buffer, pad_lengths)  # noqa: E741
             ]
         else:
             logits = []

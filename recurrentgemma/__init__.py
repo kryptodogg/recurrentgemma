@@ -16,7 +16,7 @@
 
 __version__ = "1.0.1"
 
-from recurrentgemma import common
-from recurrentgemma.jax import complex_lib
-from recurrentgemma.jax import layers
-from recurrentgemma.jax import scan
+from recurrentgemma import common  # noqa: F401
+from recurrentgemma.jax import complex_lib  # noqa: F401
+from recurrentgemma.jax import layers  # noqa: F401
+from recurrentgemma.jax import scan  # noqa: F401

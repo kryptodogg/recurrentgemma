@@ -328,7 +328,7 @@ class RGLRU(nn.Module):
           Output of the block together with the updated hidden state.
         """
 
-        bs, l, _ = x.shape
+        bs, l, _ = x.shape  # noqa: E741
         assert segment_pos.shape == (bs, l)
         reset = segment_pos == 0
 

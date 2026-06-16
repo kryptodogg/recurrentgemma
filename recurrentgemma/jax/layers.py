@@ -121,7 +121,7 @@ class BlockDiagonalLinear(nn.Module):
             self.param_dtype,
         )
 
-    def __call__(self, x: jt.Float[jt.Array, "*b t e"]) -> jt.Float[jt.Array, "*b t f"]:
+    def __call__(self, x: jt.Float[jt.Array, "*b t e"]) -> jt.Float[jt.Array, "*b t f"]:  # noqa: F722
         """Calls the BlockDiagonalLinear."""
         x, w, b = nn.dtypes.promote_dtype(x, self.w, self.b, dtype=self.dtype)
 
@@ -236,7 +236,7 @@ class RGLRU(nn.Module):
 
     def merged_to_complex(
         self,
-        x: jt.Float[jt.ArrayLike, "*b"],
+        x: jt.Float[jt.ArrayLike, "*b"],  # noqa: F722
     ) -> complex_lib.RealOrComplex:
         """Returns a (complex) array from a merged array.
 
@@ -258,8 +258,8 @@ class RGLRU(nn.Module):
 
     def real_imag_complex(
         self,
-        real: jt.Float[jt.Array, "*b"],
-        imag: jt.Float[jt.Array, "*b"],
+        real: jt.Float[jt.Array, "*b"],  # noqa: F722
+        imag: jt.Float[jt.Array, "*b"],  # noqa: F722
     ) -> complex_lib.RealOrComplex:
         """Based on the settings, creates a (complex) number in the correct format.
 
@@ -291,7 +291,7 @@ class RGLRU(nn.Module):
     def complex_to_merged(
         self,
         x: complex_lib.RealOrComplex,
-    ) -> jt.Float[jt.ArrayLike, "*b"]:
+    ) -> jt.Float[jt.ArrayLike, "*b"]:  # noqa: F722
         """Returns a merged array from a (complex) array.
 
         A merged array is one where the first half over the last axis represents the
@@ -404,7 +404,7 @@ class RGLRU(nn.Module):
             dtype=self.dtype,
         )
 
-        bs, l, _ = x.shape
+        bs, l, _ = x.shape  # noqa: E741
         assert segment_pos.shape == (bs, l)
 
         # Gate for the input.

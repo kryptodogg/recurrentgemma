@@ -46,14 +46,14 @@ class SamplingState(Generic[Cache]):
       logits_buffer: Fixed-size buffer for accumulating the output logits.
     """
 
-    tokens_buffer: jt.Integer[jt.Array, "*b l"]
+    tokens_buffer: jt.Integer[jt.Array, "*b l"]  # noqa: F722
     rng: jt.PRNGKeyArray | None
-    step: jt.Integer[jt.Array, ""]
-    total_steps: jt.Integer[jt.Array, ""]
-    positions: jt.Integer[jt.Array, "*b 1"]
+    step: jt.Integer[jt.Array, ""]  # noqa: F722
+    total_steps: jt.Integer[jt.Array, ""]  # noqa: F722
+    positions: jt.Integer[jt.Array, "*b 1"]  # noqa: F722
     cache: Cache
-    done: jt.Bool[jt.Array, "*b"]
-    logits_buffer: jt.Float[jt.Array, "*b l v"] | None = None
+    done: jt.Bool[jt.Array, "*b"]  # noqa: F722
+    logits_buffer: jt.Float[jt.Array, "*b l v"] | None = None  # noqa: F722
 
 
 @struct.dataclass
@@ -155,8 +155,8 @@ class Sampler(Generic[Cache]):
     def _sample_from_logits(
         self,
         rng: jt.PRNGKeyArray | None,
-        logits: jt.Float[jt.Array, "*b v"],
-    ) -> tuple[jt.Integer[jt.Array, "*b"], jt.PRNGKeyArray | None]:
+        logits: jt.Float[jt.Array, "*b v"],  # noqa: F722
+    ) -> tuple[jt.Integer[jt.Array, "*b"], jt.PRNGKeyArray | None]:  # noqa: F722
         """Samples from the logits categorical distribution."""
         if self.deterministic_sampling:
             return jnp.argmax(logits, axis=-1), rng
@@ -446,13 +446,14 @@ class Sampler(Generic[Cache]):
 
         # Text decoding.
         tokens = [
-            tokens[l:] for tokens, l in zip(sampling_state.tokens_buffer, pad_lengths)
+            tokens[l:]
+            for tokens, l in zip(sampling_state.tokens_buffer, pad_lengths)  # noqa: E741
         ]
 
         if return_logits:
             logits = [
                 logits[l:]
-                for logits, l in zip(sampling_state.logits_buffer, pad_lengths)
+                for logits, l in zip(sampling_state.logits_buffer, pad_lengths)  # noqa: E741
             ]
         else:
             logits = []
