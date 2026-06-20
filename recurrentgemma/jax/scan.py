@@ -34,7 +34,19 @@ def resolve_scan_type(scan_type: common.ScanType) -> common.ScanType:
     """Resolves the scan type if its AUTO."""
     match scan_type:
         case common.ScanType.AUTO:
-            if jax.local_devices()[0].platform == "tpu":
+            if jax.local_devices()[0].platform in ("tpu", "gpu", "rocm", "cuda"):
+                # SYN-675 Tier 4 mitigation (2026-06-20): GPU-family platforms now
+                # engage the Pallas recurrent scan path to bypass rocBLAS dispatch
+                # in jit(scan), which trips HSA_STATUS_ERROR_INVALID_PACKET_FORMAT
+                # (0x1009) on AMD RX 6700 XT (RDNA2, gfx1031 spoofed as gfx1030).
+                # Platform tuples cover BOTH the unified "gpu" tag (newer JAX)
+                # AND the older vendor-specific tags "rocm" / "cuda" (older JAX).
+                # Note: shared/env.py:setup_jax_rocm() sets JAX_PLATFORMS=rocm,cpu,
+                # so on the canonical ROCm rig this resolves to platform="rocm" —
+                # the production target of the Tier 4 mitigation MUST hit this
+                # branch. Pure-jax lru_linear_scan remains the path for TPU-only
+                # AUTO; Pallas path verified parity within atol=1e-5 by
+                # tests/test_rnn_scan_pallas_parity.py (skip-on-CPU graceful).
                 return common.ScanType.LINEAR_PALLAS
             else:
                 return common.ScanType.LINEAR_NATIVE

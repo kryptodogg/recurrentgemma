@@ -20,6 +20,9 @@ from typing import Literal, NamedTuple, TypeVar, overload
 
 import jax
 import jax.experimental.pallas as pl
+from jax.experimental.pallas import (
+    triton as pltriton,
+)  # SYN-675 Tier 4 (2026-06-20): route Pallas -> Triton on GPU/CUDA/ROCm
 import jax.numpy as jnp
 from recurrentgemma.jax import complex_lib
 
@@ -674,6 +677,15 @@ def linear_rnn_pallas_call(
     args = [to_blocks(arg, kernel_spec.singleton_tile_size) for arg in args]
 
     # Execute the Pallas call.
+    # SYN-675 Tier 4 Mosaic/ROCm fix (2026-06-20): route Pallas to Triton on
+    # AMD/NVIDIA GPU platforms. Mosaic GPU (default) is ROCm-incompatible;
+    # Triton backend has the AMD/HIP path. CPU and TPU stay on their
+    # native Pallas paths (compiler_params=None -> Pallas dispatches to
+    # the correct backend automatically).
+    _platform = jax.local_devices()[0].platform
+    _pl_compiler_params = (
+        pltriton.CompilerParams() if _platform in ("gpu", "rocm", "cuda") else None
+    )
     outputs = pl.pallas_call(
         functools.partial(
             linear_rnn_pallas_kernel,
@@ -683,6 +695,7 @@ def linear_rnn_pallas_call(
         out_shape=out_shapes,
         in_specs=in_specs,
         out_specs=out_specs,
+        compiler_params=_pl_compiler_params,
         grid=kernel_spec.grid,
     )(*args)
 
