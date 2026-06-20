@@ -34,19 +34,27 @@ def resolve_scan_type(scan_type: common.ScanType) -> common.ScanType:
     """Resolves the scan type if its AUTO."""
     match scan_type:
         case common.ScanType.AUTO:
-            if jax.local_devices()[0].platform in ("tpu", "gpu", "rocm", "cuda"):
-                # SYN-675 Tier 4 mitigation (2026-06-20): GPU-family platforms now
-                # engage the Pallas recurrent scan path to bypass rocBLAS dispatch
-                # in jit(scan), which trips HSA_STATUS_ERROR_INVALID_PACKET_FORMAT
-                # (0x1009) on AMD RX 6700 XT (RDNA2, gfx1031 spoofed as gfx1030).
-                # Platform tuples cover BOTH the unified "gpu" tag (newer JAX)
-                # AND the older vendor-specific tags "rocm" / "cuda" (older JAX).
-                # Note: shared/env.py:setup_jax_rocm() sets JAX_PLATFORMS=rocm,cpu,
-                # so on the canonical ROCm rig this resolves to platform="rocm" —
-                # the production target of the Tier 4 mitigation MUST hit this
-                # branch. Pure-jax lru_linear_scan remains the path for TPU-only
-                # AUTO; Pallas path verified parity within atol=1e-5 by
-                # tests/test_rnn_scan_pallas_parity.py (skip-on-CPU graceful).
+            if jax.local_devices()[0].platform == "tpu":
+                # SYN-675 Tier 5 mitigation (2026-06-20, postfix): Tier 4 mitigation
+                # REVERSED. The Tier 4 Pallas-on-GPU route was tested at PR #1084
+                # (commit bdb7a4f6a). Smoke-gate evidence at
+                # /tmp/syn675_tier4_postfix.log shows the post-XLA-compile Pallas
+                # kernel hits `rocdevice.cpp:3580` →
+                # `HSA_STATUS_ERROR_INVALID_PACKET_FORMAT (0x1009)` on RDNA2
+                # (gfx1031 spoofed as gfx1030). PREALLOCATE hypothesis was already
+                # eliminated via Tier 2 (false vs true, both 3/3 crashed); cache
+                # staleness eliminated via Tier 1 (cache wipe 3/3 crashed). The
+                # remaining proximate cause is the Tier-4 Pallas/Triton dispatch
+                # path, which on AMD ROCm packets an AQL packet the KFD driver
+                # rejects. Tier 5 forces `LINEAR_NATIVE` on every non-TPU
+                # platform; only TPU keeps `LINEAR_PALLAS` (no failure evidence
+                # on TPU). The pure-JAX `lru_linear_scan` lowers to standard
+                # rocBLAS instructions via `lax.scan`, no Triton AQL packet, so
+                # the 0x1009 fingerprint does not reproduce. Re-verification log
+                # lands at /tmp/syn675_tier5_reverify.log after this commit ships.
+                # tests/test_rnn_scan_pallas_parity.py is skip-on-CPU; CPU
+                # resolves to NATIVE both before and after this edit, so CPU CI
+                # parity is unaffected. Pallas parity on TPU is unchanged.
                 return common.ScanType.LINEAR_PALLAS
             else:
                 return common.ScanType.LINEAR_NATIVE
