@@ -542,7 +542,6 @@ class Conv1D(nn.Module):
         """
         b, num_tokens, d = x.shape
         assert cache.shape == (b, self.temporal_width - 1, d)
-        assert num_tokens == 1
         return torch.concatenate([cache.type(x.dtype), x], dim=1)
 
     def _convolution_window_indices(
