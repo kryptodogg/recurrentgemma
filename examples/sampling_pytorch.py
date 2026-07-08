@@ -66,7 +66,7 @@ def _load_and_sample(
     total_generation_steps: int,
 ) -> None:
     """Loads and samples a string from a checkpoint."""
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cuda"
     print(f"Loading the parameters from {path_checkpoint}")
     params = torch.load(path_checkpoint)
     params = {k: v.to(device=device) for k, v in params.items()}
