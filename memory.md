@@ -4,7 +4,7 @@
 
 **GALR implementation verified** (`aura/neural_acoustics/galr_teacher.py`):
 - Time-domain masks: 2D conv → tanh/sigmoid beam-forming → ReLU (paper Eq. 12)
-- Stereo support: `in_channels: int = 2` in `GALRTeacherConfig`
+- Stereo support: `in_channels: int = 2` in `GalrSeparatorConfig`
 - PIT: Implemented via `itertools.permutations`
 - Decoder: One transposed 1D conv per source output
 
